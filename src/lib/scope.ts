@@ -6,6 +6,9 @@
  * - "office": the documents list it under one of the scope's DPWH offices;
  * - "place": its title names one of the scope's places.
  * The same line found by several queries appears once, with every reason.
+ * A DPWH line found only by place, but listed under a district office the
+ * scope does not include, is left out (a namesake office, such as
+ * "Metro Manila 2nd DEO" for Manila) and listed on the About page.
  *
  * Nothing is computed that the API does not publish: amounts, statuses and
  * labels are the API's, row for row.
@@ -45,6 +48,12 @@ export interface QueryReport {
 export interface ScopeResult {
   projects: ScopedProject[];
   excluded: { exclusion: Exclusion; project: ScopedProject | null }[];
+  /**
+   * DPWH lines found only by a place search but listed under a district
+   * office outside the scope (a namesake office such as "Metro Manila 2nd DEO").
+   * Left out automatically; published on the About page.
+   */
+  foreignOffice: ScopedProject[];
   queries: QueryReport[];
   /** Every disclaimer the API attached to the responses used, verbatim, in order. */
   disclaimers: Disclaimer[];
@@ -52,6 +61,20 @@ export interface ScopeResult {
 }
 
 export const projectKey = (dataset: string, id: string) => `${dataset}:${id}`;
+
+/**
+ * A DPWH line here only because a place search matched it, while the
+ * documents list it under a district office this portal does not include.
+ */
+export function isForeignOfficeMatch(p: ScopedProject, offices: Set<string>): boolean {
+  return (
+    p.dataset === 'dpwh' &&
+    !!p.office &&
+    !offices.has(p.office) &&
+    !!p.office_kind?.startsWith('District') &&
+    p.reasons.every((r) => r.kind === 'place')
+  );
+}
 
 export async function resolveScope(client: Client, config: PortalConfig): Promise<ScopeResult> {
   const { offices = [], places = [] } = config.scope;
@@ -111,15 +134,24 @@ export async function resolveScope(client: Client, config: PortalConfig): Promis
   // so a list that starts with the general one reads naturally.
   const ordered = [...disclaimers.values()].sort((a, b) => Number(a.id === 'disclaimer-offices') - Number(b.id === 'disclaimer-offices'));
 
+  const ownOffices = new Set(offices);
+  const keepForeign = config.scope.keepForeignOfficeMatches ?? false;
+  const foreignOffice = keepForeign
+    ? []
+    : [...byKey.values()].filter((p) => isForeignOfficeMatch(p, ownOffices));
+  const foreignKeys = new Set(foreignOffice.map((p) => p.key));
+
   const excludedKeys = new Map(exclude.map((e) => [e.key, e]));
   const excluded = exclude.map((exclusion) => ({ exclusion, project: byKey.get(exclusion.key) ?? null }));
-  const projects = [...byKey.values()].filter((p) => !excludedKeys.has(p.key)).sort(byHouseThenNep);
+  const projects = [...byKey.values()]
+    .filter((p) => !excludedKeys.has(p.key) && !foreignKeys.has(p.key))
+    .sort(byHouseThenNep);
 
   if (!meta) {
     // No queries ran (an empty scope): still return the API's meta for the footer.
     meta = (await client.overview()).meta;
   }
-  return { projects, excluded, queries, disclaimers: ordered, meta };
+  return { projects, excluded, foreignOffice, queries, disclaimers: ordered, meta };
 }
 
 function byHouseThenNep(a: ProjectRow, b: ProjectRow): number {
