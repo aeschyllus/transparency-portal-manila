@@ -90,23 +90,47 @@ function AboutView({ scope, overview }: { scope: ScopeResult; overview: Overview
       <GaaQuestions />
 
       <section className="section" aria-labelledby="x-h">
-        <h2 id="x-h" className="section-h">2027 lines removed by hand: {count(scope.excluded.length)}</h2>
-        {scope.excluded.length === 0 ? (
-          <p>None. Every line the questions return is shown.</p>
-        ) : (
-          <ul className="plain-list">
-            {scope.excluded.map(({ exclusion, project }) => (
-              <li key={exclusion.key}>
-                {project ? (
-                  <External href={project.url}>{project.title}</External>
-                ) : (
-                  <code>{exclusion.key}</code>
-                )}
-                <span className="muted"> — {exclusion.reason}</span>
-              </li>
-            ))}
-          </ul>
+        <h2 id="x-h" className="section-h">
+          2027 lines left out: {count(scope.excluded.length + scope.foreignOffice.length)}
+        </h2>
+
+        {scope.foreignOffice.length > 0 && (
+          <details>
+            <summary>Under another DPWH district office: {count(scope.foreignOffice.length)}</summary>
+            <p className="fine">
+              These lines name the place, but the documents list them under a DPWH district office this portal does not
+              cover, so they are left out.
+            </p>
+            <ul className="plain-list">
+              {scope.foreignOffice.map((p) => (
+                <li key={p.key}>
+                  <External href={p.url}>{p.title}</External>
+                  <span className="muted"> — {p.office}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
         )}
+
+        <details>
+          <summary>Removed by hand: {count(scope.excluded.length)}</summary>
+          {scope.excluded.length === 0 ? (
+            <p className="fine">None. Every other line the questions return is shown.</p>
+          ) : (
+            <ul className="plain-list">
+              {scope.excluded.map(({ exclusion, project }) => (
+                <li key={exclusion.key}>
+                  {project ? (
+                    <External href={project.url}>{project.title}</External>
+                  ) : (
+                    <code>{exclusion.key}</code>
+                  )}
+                  <span className="muted"> — {exclusion.reason}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </details>
       </section>
 
       <section className="section two-col" aria-labelledby="r-h">

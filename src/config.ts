@@ -81,6 +81,12 @@ export interface PortalConfig {
     districts?: string[];
     /** Lines removed by hand. Published, with reasons, on the About page. */
     exclude?: Exclusion[];
+    /**
+     * Keep DPWH lines found only by a place search even when the documents
+     * list them under another district office. Off by default: such lines
+     * are usually a namesake office ("Metro Manila 1st DEO" for Manila).
+     */
+    keepForeignOfficeMatches?: boolean;
   };
   /**
    * Citizen reports go to one central service on budget.bettergov.ph (not

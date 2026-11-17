@@ -55,15 +55,11 @@ async function main() {
     if (!project) problems.push(`exclusion ${exclusion.key} matches no line in the portal; remove it.`);
   }
 
-  // Lines found only by name, under a DPWH office outside the scope: often right
-  // (a Central Office project in the place), sometimes a namesake elsewhere.
-  const offices = new Set(config.scope.offices ?? []);
-  const nameOnly = scope.projects.filter(
-    (p) => p.dataset === 'dpwh' && p.office && !offices.has(p.office) && p.office_kind?.startsWith('District') && p.reasons.every((r) => r.kind === 'place'),
-  );
-  if (nameOnly.length) {
-    warnings.push(`${nameOnly.length} DPWH line(s) are here only because the title names the place, but the documents list them under a district office this portal does not include. Review them (--verbose) and exclude any namesakes.`);
-    if (verbose) for (const p of nameOnly) console.log(`    ${p.key}  [${p.office}]  ${p.title}`);
+  // Lines found only by name under another district office are left out by
+  // resolveScope (a namesake office). Report how many, so a fork can review them.
+  if (scope.foreignOffice.length) {
+    console.log(`\n${scope.foreignOffice.length} DPWH line(s) left out: they name the place but are listed under another district office.`);
+    if (verbose) for (const p of scope.foreignOffice) console.log(`    ${p.key}  [${p.office}]  ${p.title}`);
   }
 
   const s = summarise(scope.projects);
